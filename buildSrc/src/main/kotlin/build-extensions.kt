@@ -56,6 +56,9 @@ val Project.commonExpansions: Map<String, String>
             "neoforgeReq" to commonMod.propOrNull("neoforge_req"),
             "neoforgeMcReq" to commonMod.propOrNull("neoforge_mc_req"),
             "forgeVersion" to commonMod.depOrNull("forge"),
+            "forgeLoaderReq" to commonMod.propOrNull("forge_loader_req"),
+            "forgeReq" to commonMod.propOrNull("forge_req"),
+            "forgeMcReq" to commonMod.propOrNull("forge_mc_req"),
         ).filterValues { it?.isNotEmpty() == true }.mapValues { it.value!! }
     }
 val Project.commonJsonExpansions get() =
