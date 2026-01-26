@@ -20,14 +20,14 @@ fletchingTable {
 
 legacyForge {
     enable {
-        forgeVersion = "${mod.mc}-${commonMod.dep("forge")}"
+        forgeVersion = "${mod.mc}-${currentMod.dep("forge")}"
     }
 }
 
 dependencies {
-    annotationProcessor("org.spongepowered:mixin:${commonMod.dep("mixin")}:processor")
-    modApi("me.shedaniel.cloth:cloth-config-forge:${commonMod.dep("cloth")}")
-    jarJar(modImplementation("me.shedaniel.cloth:cloth-config-forge:${commonMod.dep("cloth")}") as Any)
+    annotationProcessor("org.spongepowered:mixin:${currentMod.dep("mixin")}:processor")
+    modApi("me.shedaniel.cloth:cloth-config-forge:${currentMod.dep("cloth")}")
+    jarJar(modImplementation("me.shedaniel.cloth:cloth-config-forge:${currentMod.dep("cloth")}") as Any)
 }
 
 legacyForge {
@@ -49,14 +49,14 @@ legacyForge {
     }
 
     parchment {
-        commonMod.depOrNull("parchment")?.let {
+        currentMod.depOrNull("parchment")?.let {
             mappingsVersion = it.split('-')[1]
             minecraftVersion = it.split('-')[0]
         }
     }
 
     mods {
-        register(commonMod.id) {
+        register(currentMod.id) {
             sourceSet(sourceSets.main.get())
         }
     }
