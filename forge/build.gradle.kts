@@ -27,8 +27,7 @@ legacyForge {
 
 dependencies {
     annotationProcessor("org.spongepowered:mixin:${currentMod.dep("mixin")}:processor")
-    modApi("me.shedaniel.cloth:cloth-config-forge:${currentMod.dep("cloth")}")
-    jarJar(modImplementation("me.shedaniel.cloth:cloth-config-forge:${currentMod.dep("cloth")}") as Any)
+    forgeDependency(group = "me.shedaniel.cloth", name = "cloth-config-forge", version = currentMod.dep("cloth"))
 }
 
 legacyForge {
@@ -101,4 +100,10 @@ tasks.jar {
 
 publisher {
     artifact.set(tasks.named("jar"))
+}
+
+fun DependencyHandlerScope.forgeDependency(group: String, name: String, version: String) {
+    compileOnly(group, name, version)
+    modRuntimeOnly(group, name, version)
+    jarJar(modImplementation(group, name, version))
 }
