@@ -1,18 +1,27 @@
-import gradle.kotlin.dsl.accessors._048b83e708103bfc1eb60f0aa1421860.processResources
-import groovy.json.JsonSlurper
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import net.fabricmc.mappingio.MappingReader
 import net.fabricmc.mappingio.MappingWriter
 import net.fabricmc.mappingio.adapter.MappingNsRenamer
 import net.fabricmc.mappingio.format.MappingFormat
 import net.fabricmc.mappingio.tree.MappingTree
 import net.fabricmc.mappingio.tree.MemoryMappingTree
+import net.xolt.freecam.gradle.MCVersionJson
+import net.xolt.freecam.gradle.MCVersionManifest
 import java.net.URI
+
+val json = Json {
+    ignoreUnknownKeys = true
+}
 
 val srgFile = layout.buildDirectory.file("mappings/srg.tsrg")
 val mojMapFile = layout.buildDirectory.file("mappings/mojMap.txt")
 val namedToSrgFile = layout.buildDirectory.file("mappings/namedToSrg.tsrg")
+val processResources = tasks.named<ProcessResources>("processResources")
 
 val generateNamedToSrg by tasks.registering {
+    group = "mappings"
     dependsOn(downloadSrgMappings, downloadMojMappings)
     outputs.file(namedToSrgFile)
 
@@ -38,31 +47,40 @@ val generateNamedToSrg by tasks.registering {
     }
 }
 
-@Suppress("UNCHECKED_CAST")
+@OptIn(ExperimentalSerializationApi::class)
 val downloadMojMappings by tasks.registering {
+    group = "mappings"
     outputs.file(mojMapFile)
 
+    // Out of date when MC version changes
+    inputs.property("minecraftVersion", currentMod.mc)
+
     doLast {
-        val url = URI("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json").toURL()
-        val manifest = JsonSlurper().parse(url) as Map<*, *>
-        val versions = manifest["versions"] as List<Map<*, *>>
-        val version = versions.first { it["id"] == currentMod.mc }
-        val versionJson = JsonSlurper().parse(URI(version["url"].toString()).toURL()) as Map<*, *>
+        val manifestUrl = URI("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json").toURL()
 
-        val downloads = versionJson["downloads"] as Map<*, *>
-        val clientMappings = downloads["client_mappings"] as Map<*, *>
-        val mappingsUrl = clientMappings["url"].toString()
+        val manifest: MCVersionManifest = manifestUrl.openStream().use(json::decodeFromStream)
 
-        val out = mojMapFile.get().asFile
-        out.parentFile.mkdirs()
-        URI(mappingsUrl).toURL().openStream().use { input ->
-            out.outputStream().use { input.copyTo(it) }
+        val version = manifest.versions.firstOrNull { it.id == currentMod.mc }
+            ?: error("Minecraft version ${currentMod.mc} not found in Mojang manifest")
+
+        val versionUrl = URI(version.url).toURL()
+        val versionJson: MCVersionJson = versionUrl.openStream().use(json::decodeFromStream)
+
+        val mappingsUrl = URI(versionJson.downloads.clientMappings.url).toURL()
+        mappingsUrl.openStream().use { mappings ->
+            val out = mojMapFile.get().asFile
+            out.parentFile.mkdirs()
+            out.outputStream().use(mappings::copyTo)
         }
     }
 }
 
 val downloadSrgMappings by tasks.registering {
+    group = "mappings"
     outputs.file(srgFile)
+
+    // Out of date when MC version changes
+    inputs.property("minecraftVersion", currentMod.mc)
 
     doLast {
         val mcpVersion = currentMod.mc
@@ -82,12 +100,18 @@ val downloadSrgMappings by tasks.registering {
 }
 
 val remapAtToSrg by tasks.registering {
-    dependsOn(generateNamedToSrg, tasks.processResources)
-    group = "build"
+    group = "mappings"
     description = "Remap AccessTransformer from named to SRG"
+    dependsOn(generateNamedToSrg)
 
-    val inputAt = layout.projectDirectory.file("build/resources/main/META-INF/accesstransformer.cfg")
-    val outputAt = layout.buildDirectory.file("resources/main/META-INF/accesstransformer.cfg")
+    // the unmapped file comes from fletching table, via processResources
+    // We later overwrite this file
+    val inputAt = processResources.map {
+        it.destinationDir.resolve("META-INF/accesstransformer.cfg")
+    }
+
+    // outputAt is a staging file so that gradle can see whether anything changed
+    val outputAt = layout.buildDirectory.file("srg_at/accesstransformer.cfg")
 
     inputs.file(inputAt)
     inputs.file(namedToSrgFile)
@@ -102,12 +126,25 @@ val remapAtToSrg by tasks.registering {
 
         outputAt.get().asFile.parentFile.mkdirs()
 
-        val remappedLines = inputAt.asFile.readLines().map { line ->
+        val remappedLines = inputAt.get().readLines().map { line ->
             remapAtLine(line, remapper)
         }
 
         outputAt.get().asFile.writeText(remappedLines.joinToString("\n"))
+
+        // Overwrite the processResources file
+        copy {
+            from(outputAt)
+            into(inputAt.get().parentFile)
+        }
     }
+}
+
+processResources {
+    // Fletching Table generates accesstransformer.cfg during processResources execution.
+    // We must remap it after processResources runs, and ensure downstream tasks see the
+    // remapped file.
+    finalizedBy(remapAtToSrg)
 }
 
 fun remapAtLine(line: String, remapper: MappingTree): String {

@@ -50,9 +50,9 @@ legacyForge {
     }
 
     parchment {
-        currentMod.depOrNull("parchment")?.let {
-            mappingsVersion = it.split('-')[1]
-            minecraftVersion = it.split('-')[0]
+        currentMod.parchment { mappings, mc ->
+            minecraftVersion = mc
+            mappingsVersion = mappings
         }
     }
 
@@ -77,12 +77,8 @@ sourceSets.main {
 tasks.register<Copy>("buildAndCollect") {
     group = "build"
     from(tasks.jar.map { it.archiveFile })
-    into(rootProject.layout.buildDirectory.file("libs/${project.property("mod.version")}"))
+    into(rootProject.layout.buildDirectory.file("libs/${currentMod.version}"))
     dependsOn("build")
-}
-
-tasks.named("createMinecraftArtifacts") {
-    dependsOn(tasks.remapAtToSrg)
 }
 
 tasks.processResources {
