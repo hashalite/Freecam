@@ -81,10 +81,6 @@ tasks.register<Copy>("buildAndCollect") {
     dependsOn("build")
 }
 
-tasks.named("createMinecraftArtifacts") {
-    dependsOn(tasks.remapAtToSrg)
-}
-
 tasks.processResources {
     exclude("freecam.accesswidener")
 

@@ -93,10 +93,16 @@ val downloadSrgMappings by tasks.registering {
 val remapAtToSrg by tasks.registering {
     group = "mappings"
     description = "Remap AccessTransformer from named to SRG"
-    dependsOn(generateNamedToSrg, processResources)
+    dependsOn(generateNamedToSrg)
 
-    val inputAt = layout.projectDirectory.file("build/resources/main/META-INF/accesstransformer.cfg")
-    val outputAt = layout.buildDirectory.file("resources/main/META-INF/accesstransformer.cfg")
+    // the unmapped file comes from fletching table, via processResources
+    // We later overwrite this file
+    val inputAt = processResources.map {
+        it.destinationDir.resolve("META-INF/accesstransformer.cfg")
+    }
+
+    // outputAt is a staging file so that gradle can see whether anything changed
+    val outputAt = layout.buildDirectory.file("srg_at/accesstransformer.cfg")
 
     inputs.file(inputAt)
     inputs.file(namedToSrgFile)
@@ -111,12 +117,25 @@ val remapAtToSrg by tasks.registering {
 
         outputAt.get().asFile.parentFile.mkdirs()
 
-        val remappedLines = inputAt.asFile.readLines().map { line ->
+        val remappedLines = inputAt.get().readLines().map { line ->
             remapAtLine(line, remapper)
         }
 
         outputAt.get().asFile.writeText(remappedLines.joinToString("\n"))
+
+        // Overwrite the processResources file
+        copy {
+            from(outputAt)
+            into(inputAt.get().parentFile)
+        }
     }
+}
+
+processResources {
+    // Fletching Table generates accesstransformer.cfg during processResources execution.
+    // We must remap it after processResources runs, and ensure downstream tasks see the
+    // remapped file.
+    finalizedBy(remapAtToSrg)
 }
 
 fun remapAtLine(line: String, remapper: MappingTree): String {
