@@ -13,6 +13,7 @@ val namedToSrgFile = layout.buildDirectory.file("mappings/namedToSrg.tsrg")
 val processResources = tasks.named<ProcessResources>("processResources")
 
 val generateNamedToSrg by tasks.registering {
+    group = "mappings"
     dependsOn(downloadSrgMappings, downloadMojMappings)
     outputs.file(namedToSrgFile)
 
@@ -40,6 +41,7 @@ val generateNamedToSrg by tasks.registering {
 
 @Suppress("UNCHECKED_CAST")
 val downloadMojMappings by tasks.registering {
+    group = "mappings"
     outputs.file(mojMapFile)
 
     doLast {
@@ -62,6 +64,7 @@ val downloadMojMappings by tasks.registering {
 }
 
 val downloadSrgMappings by tasks.registering {
+    group = "mappings"
     outputs.file(srgFile)
 
     doLast {
@@ -82,9 +85,9 @@ val downloadSrgMappings by tasks.registering {
 }
 
 val remapAtToSrg by tasks.registering {
-    dependsOn(generateNamedToSrg, processResources)
-    group = "build"
+    group = "mappings"
     description = "Remap AccessTransformer from named to SRG"
+    dependsOn(generateNamedToSrg, processResources)
 
     val inputAt = layout.projectDirectory.file("build/resources/main/META-INF/accesstransformer.cfg")
     val outputAt = layout.buildDirectory.file("resources/main/META-INF/accesstransformer.cfg")
