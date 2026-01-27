@@ -1,4 +1,3 @@
-import gradle.kotlin.dsl.accessors._048b83e708103bfc1eb60f0aa1421860.processResources
 import groovy.json.JsonSlurper
 import net.fabricmc.mappingio.MappingReader
 import net.fabricmc.mappingio.MappingWriter
@@ -11,6 +10,7 @@ import java.net.URI
 val srgFile = layout.buildDirectory.file("mappings/srg.tsrg")
 val mojMapFile = layout.buildDirectory.file("mappings/mojMap.txt")
 val namedToSrgFile = layout.buildDirectory.file("mappings/namedToSrg.tsrg")
+val processResources = tasks.named<ProcessResources>("processResources")
 
 val generateNamedToSrg by tasks.registering {
     dependsOn(downloadSrgMappings, downloadMojMappings)
@@ -82,7 +82,7 @@ val downloadSrgMappings by tasks.registering {
 }
 
 val remapAtToSrg by tasks.registering {
-    dependsOn(generateNamedToSrg, tasks.processResources)
+    dependsOn(generateNamedToSrg, processResources)
     group = "build"
     description = "Remap AccessTransformer from named to SRG"
 
