@@ -44,6 +44,9 @@ val downloadMojMappings by tasks.registering {
     group = "mappings"
     outputs.file(mojMapFile)
 
+    // Out of date when MC version changes
+    inputs.property("minecraftVersion", currentMod.mc)
+
     doLast {
         val url = URI("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json").toURL()
         val manifest = JsonSlurper().parse(url) as Map<*, *>
@@ -66,6 +69,9 @@ val downloadMojMappings by tasks.registering {
 val downloadSrgMappings by tasks.registering {
     group = "mappings"
     outputs.file(srgFile)
+
+    // Out of date when MC version changes
+    inputs.property("minecraftVersion", currentMod.mc)
 
     doLast {
         val mcpVersion = currentMod.mc
